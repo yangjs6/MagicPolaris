@@ -1,24 +1,60 @@
 {
-	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "1.0",
-	"FriendlyName": "MagicPolaris",
-	"Description": "Magic Polaris is an UE4-plugin for 3d-map graphics rendering",
-	"Category": "Other",
-	"CreatedBy": "Janson Yang",
-	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
-	"SupportURL": "",
-	"CanContainContent": true,
-	"IsBetaVersion": false,
-	"IsExperimentalVersion": false,
-	"Installed": false,
-	"Modules": [
-		{
-			"Name": "MpBase",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		}
-	]
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "MagicPolaris",
+  "Description": "Magic Polaris is an UE4-plugin for 3d-map graphics rendering",
+  "Category": "Other",
+  "CreatedBy": "Janson Yang",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "MpBase",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpCore",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpGraphics",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpDataSource",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpTest",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpEarth",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "MpEarthEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "GeometryProcessing",
+      "Enabled": true
+    },
+  ]
 }

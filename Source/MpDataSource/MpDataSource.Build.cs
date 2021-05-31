@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class MpBase : ModuleRules
+public class MpDataSource : ModuleRules
 {
-	public MpBase(ReadOnlyTargetRules Target) : base(Target)
+	public MpDataSource(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -26,7 +26,6 @@ public class MpBase : ModuleRules
 			new string[]
 			{
 				"Core",
-                "GeometricObjects",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

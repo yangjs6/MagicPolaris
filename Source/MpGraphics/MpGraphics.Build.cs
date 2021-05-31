@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class MpBase : ModuleRules
+public class MpGraphics : ModuleRules
 {
-	public MpBase(ReadOnlyTargetRules Target) : base(Target)
+	public MpGraphics(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -26,7 +26,12 @@ public class MpBase : ModuleRules
 			new string[]
 			{
 				"Core",
+                "MpBase",
+                "MpCore",
+
                 "GeometricObjects",
+                "GeometryAlgorithms",
+                "DynamicMesh"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -39,6 +44,8 @@ public class MpBase : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+                "RenderCore",
+                "RHI",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

@@ -1,22 +1,20 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "MpBase.h"
-#include "MpLog.h"
+#include "MpCore.h"
 
-#define LOCTEXT_NAMESPACE "FMpBaseModule"
+#define LOCTEXT_NAMESPACE "FMpCoreModule"
 
-void FMpBaseModule::StartupModule()
+void FMpCoreModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 }
 
-void FMpBaseModule::ShutdownModule()
+void FMpCoreModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
 }
 
 #undef LOCTEXT_NAMESPACE
-
-DEFINE_LOG_CATEGORY(LogMp);
-IMPLEMENT_MODULE(FMpBaseModule, MpBase)
+	
+IMPLEMENT_MODULE(FMpCoreModule, MpCore)
