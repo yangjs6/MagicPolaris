@@ -57,7 +57,7 @@ struct MPBASE_API FGeoPosition
 			HeightMeters);
 	}
 
-	void ToDegrees(double& LongitudeDegrees, double& LatitudeDegrees)
+	void ToDegrees(double& LongitudeDegrees, double& LatitudeDegrees) const
 	{
 		LongitudeDegrees = FMath::RadiansToDegrees(Longitude);
 		LatitudeDegrees = FMath::RadiansToDegrees(Latitude);

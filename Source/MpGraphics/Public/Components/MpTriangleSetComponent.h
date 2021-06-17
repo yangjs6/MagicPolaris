@@ -50,15 +50,15 @@ struct FMpRenderableTriangle
 	GENERATED_BODY()
 
 	FMpRenderableTriangle()
-		: Material(nullptr)
+		: Material(INDEX_NONE)
 		, Vertex0()
 		, Vertex1()
 		, Vertex2()
 	{}
 
-	FMpRenderableTriangle( UMaterialInterface* InMaterial, const FMpRenderableTriangleVertex& InVertex0, 
+	FMpRenderableTriangle(const int32& InMaterial, const FMpRenderableTriangleVertex& InVertex0,
 		const FMpRenderableTriangleVertex& InVertex1, const FMpRenderableTriangleVertex& InVertex2 )
-		: Material( InMaterial ),
+		: Material(InMaterial),
 		  Vertex0( InVertex0 ),
 		  Vertex1( InVertex1 ),
 		  Vertex2( InVertex2 )
@@ -66,7 +66,7 @@ struct FMpRenderableTriangle
 	}
 
 	UPROPERTY()
-	UMaterialInterface* Material;
+	int32 Material;
 
 	UPROPERTY()
 	FMpRenderableTriangleVertex Vertex0;
@@ -82,14 +82,11 @@ struct FMpRenderableTriangle
 * A component for rendering an arbitrary assortment of triangles. Suitable, for instance, for rendering highlighted faces.
 */
 UCLASS()
-class UMpTriangleSetComponent : public UMeshComponent
+class UMpTriangleSet : public UObject
 {
 	GENERATED_BODY()
 
 public:
-
-	UMpTriangleSetComponent();
-
 	/** Clear the triangle set */
 	void Clear();
 
@@ -113,14 +110,36 @@ public:
 	 * Add a triangle with the given vertices, normal, Color, and Material
 	 * @return ID of the triangle created
 	 */
-	int32 AddTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& Normal, const FColor& Color, UMaterialInterface* Material);
+	int32 AddTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& Normal, const FColor& Color, const int32& Material);
 
 	/**
 	 * Add a Quad (two triangles) with the given vertices, normal, Color, and Material
 	 * @return ID of the two triangles created
 	 */
-	FIndex2i AddQuad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector& Normal, const FColor& Color, UMaterialInterface* Material);
+	FIndex2i AddQuad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector& Normal, const FColor& Color, const int32& Material);
 
+	int32 FindOrAddMaterialIndex(const int32& Material);
+
+	TSparseArray<TTuple<int32, int32>> Triangles;
+	TSparseArray<TSparseArray<FMpRenderableTriangle>> TrianglesByMaterial;
+	TMap<int32, int32> MaterialToIndex;
+
+};
+
+/**
+* A component for rendering an arbitrary assortment of triangles. Suitable, for instance, for rendering highlighted faces.
+*/
+UCLASS()
+class UMpTriangleSetComponent : public UMeshComponent
+{
+	GENERATED_BODY()
+
+public:
+	UMpTriangleSetComponent();
+
+	UMpTriangleSet* GetTriangleSet() { return TriangleSet; }
+
+	void SetTriangleSet(UMpTriangleSet* InTriangleSet);
 private:
 
 	//~ Begin UPrimitiveComponent Interface.
@@ -135,17 +154,14 @@ private:
 	virtual FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
 	//~ End USceneComponent Interface.
 
-	int32 FindOrAddMaterialIndex(UMaterialInterface* Material);
-
 	UPROPERTY()
 	mutable FBoxSphereBounds Bounds;
 
 	UPROPERTY()
 	mutable bool bBoundsDirty;
 
-	TSparseArray<TTuple<int32, int32>> Triangles;
-	TSparseArray<TSparseArray<FMpRenderableTriangle>> TrianglesByMaterial;
-	TMap<UMaterialInterface*, int32> MaterialToIndex;
+	UPROPERTY()
+	UMpTriangleSet* TriangleSet;
 
 	friend class FMpTriangleSetSceneProxy;
 };

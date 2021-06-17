@@ -1,5 +1,5 @@
 #include "Graphics/MpBoxGraphics.h"
-#include "Generator/MpShapeGenerator.h"
+#include "Generators/MpShapeGenerator.h"
 
 
 UMpBoxGraphics::UMpBoxGraphics()

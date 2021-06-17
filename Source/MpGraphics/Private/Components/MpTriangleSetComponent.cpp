@@ -34,7 +34,7 @@ public:
 		MaterialRelevance(Component->GetMaterialRelevance(GetScene().GetFeatureLevel())),
 		VertexFactory(GetScene().GetFeatureLevel(), "FPointSetSceneProxy")
 	{
-		const int32 NumTriangleVertices = Algo::Accumulate(Component->TrianglesByMaterial, 0, [](int32 Acc, const TSparseArray<FMpRenderableTriangle>& Tris) { return Acc + Tris.Num() * 3; });
+		const int32 NumTriangleVertices = Algo::Accumulate(Component->TriangleSet->TrianglesByMaterial, 0, [](int32 Acc, const TSparseArray<FMpRenderableTriangle>& Tris) { return Acc + Tris.Num() * 3; });
 		const int32 NumTriangleIndices = NumTriangleVertices;
 
 		const int32 NumTextureCoordinates = 1;
@@ -49,7 +49,7 @@ public:
 
 		// Triangles
 		int32 MaterialIndex = 0;
-		for (const auto& MaterialTriangles : Component->TrianglesByMaterial)
+		for (const auto& MaterialTriangles : Component->TriangleSet->TrianglesByMaterial)
 		{
 			MeshBatchDatas.Emplace();
 			FMpTriangleSetMeshBatchData& MeshBatchData = MeshBatchDatas.Last();
@@ -57,7 +57,11 @@ public:
 			MeshBatchData.MaxVertexIndex = VertexBufferIndex + MaterialTriangles.Num() * 3 - 1;
 			MeshBatchData.StartIndex = IndexBufferIndex;
 			MeshBatchData.NumPrimitives = MaterialTriangles.Num();
-			MeshBatchData.MaterialProxy = Component->GetMaterial(MaterialIndex)->GetRenderProxy();
+			UMaterialInterface* Material = Component->GetMaterial(MaterialIndex);
+			if (Material)
+			{
+				MeshBatchData.MaterialProxy = Material->GetRenderProxy();
+			}
 
 			for (const FMpRenderableTriangle& Triangle : MaterialTriangles)
 			{
@@ -202,58 +206,54 @@ UMpTriangleSetComponent::UMpTriangleSetComponent()
 	SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 }
 
-int32 UMpTriangleSetComponent::FindOrAddMaterialIndex(UMaterialInterface* Material)
+void UMpTriangleSetComponent::SetTriangleSet(UMpTriangleSet* InTriangleSet)
+{
+	TriangleSet = InTriangleSet;
+
+	MarkRenderStateDirty();
+	bBoundsDirty = true;
+}
+
+int32 UMpTriangleSet::FindOrAddMaterialIndex(const int32& Material)
 {
 	const int32* MaterialIndexPtr = MaterialToIndex.Find(Material);
 	if (MaterialIndexPtr == nullptr)
 	{
 		const int32 MaterialIndex = TrianglesByMaterial.Add(TSparseArray<FMpRenderableTriangle>());
 		MaterialToIndex.Add(Material, MaterialIndex);
-		SetMaterial(MaterialIndex, Material);
 		return MaterialIndex;
 	}
 
 	return *MaterialIndexPtr;
 }
 
-void UMpTriangleSetComponent::Clear()
+void UMpTriangleSet::Clear()
 {
 	Triangles.Reset();
-	for (int32 Index = 0; Index < TrianglesByMaterial.Num(); Index++)
-	{
-		SetMaterial(Index, nullptr);
-	}
 	TrianglesByMaterial.Reset();
 	MaterialToIndex.Reset();
-	MarkRenderStateDirty();
-	bBoundsDirty = true;
 }
 
-void UMpTriangleSetComponent::ReserveTriangles(const int32 MaxID)
+void UMpTriangleSet::ReserveTriangles(const int32 MaxID)
 {
 	Triangles.Reserve(MaxID);
 }
 
-int32 UMpTriangleSetComponent::AddTriangle(const FMpRenderableTriangle& OverlayTriangle)
+int32 UMpTriangleSet::AddTriangle(const FMpRenderableTriangle& OverlayTriangle)
 {
 	const int32 MaterialIndex = FindOrAddMaterialIndex(OverlayTriangle.Material);
 	const int32 IndexByMaterial = TrianglesByMaterial[MaterialIndex].Add(OverlayTriangle);
 	const int32 ID = Triangles.Add(MakeTuple(MaterialIndex, IndexByMaterial));
-	MarkRenderStateDirty();
-	bBoundsDirty = true;
 	return ID;
 }
 
-void UMpTriangleSetComponent::InsertTriangle(const int32 ID, const FMpRenderableTriangle& OverlayTriangle)
+void UMpTriangleSet::InsertTriangle(const int32 ID, const FMpRenderableTriangle& OverlayTriangle)
 {
 	const int32 MaterialIndex = FindOrAddMaterialIndex(OverlayTriangle.Material);
 	const int32 IndexByMaterial = TrianglesByMaterial[MaterialIndex].Add(OverlayTriangle);
-	Triangles.Insert(ID, MakeTuple(MaterialIndex, IndexByMaterial));
-	MarkRenderStateDirty();
-	bBoundsDirty = true;
 }
 
-void UMpTriangleSetComponent::RemoveTriangle(const int32 ID)
+void UMpTriangleSet::RemoveTriangle(const int32 ID)
 {
 	const TTuple<int32, int32> MaterialAndTriangleIndex = Triangles[ID];
 	const int32 MaterialIndex = MaterialAndTriangleIndex.Get<0>();
@@ -263,17 +263,13 @@ void UMpTriangleSetComponent::RemoveTriangle(const int32 ID)
 	if (Container.Num() == 0)
 	{
 		TrianglesByMaterial.RemoveAt(MaterialIndex);
-		MaterialToIndex.Remove(GetMaterial(MaterialIndex + 2));
-		SetMaterial(MaterialIndex, nullptr);
 	}
 	Triangles.RemoveAt(ID);
-	MarkRenderStateDirty();
-	bBoundsDirty = true;
 }
 
 
 
-int32 UMpTriangleSetComponent::AddTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& Normal, const FColor& Color, UMaterialInterface* Material)
+int32 UMpTriangleSet::AddTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& Normal, const FColor& Color, const int32& Material)
 {
 	FMpRenderableTriangle NewTriangle;
 	NewTriangle.Material = Material;
@@ -285,7 +281,7 @@ int32 UMpTriangleSetComponent::AddTriangle(const FVector& A, const FVector& B, c
 	return AddTriangle(NewTriangle);
 }
 
-FIndex2i UMpTriangleSetComponent::AddQuad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector& Normal, const FColor& Color, UMaterialInterface* Material)
+FIndex2i UMpTriangleSet::AddQuad(const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FVector& Normal, const FColor& Color, const int32& Material)
 {
 	FMpRenderableTriangle NewTriangle0;
 	NewTriangle0.Material = Material;
@@ -304,14 +300,18 @@ FIndex2i UMpTriangleSetComponent::AddQuad(const FVector& A, const FVector& B, co
 }
 
 
-bool UMpTriangleSetComponent::IsTriangleValid(const int32 ID) const
+bool UMpTriangleSet::IsTriangleValid(const int32 ID) const
 {
 	return Triangles.IsValidIndex(ID);
 }
 
 FPrimitiveSceneProxy* UMpTriangleSetComponent::CreateSceneProxy()
 {
-	if (Triangles.Num() > 0)
+	if (!TriangleSet)
+	{
+		return Super::CreateSceneProxy();
+	}
+	if (TriangleSet->Triangles.Num() > 0)
 	{
 		return new FMpTriangleSetSceneProxy(this);
 	}
@@ -320,16 +320,25 @@ FPrimitiveSceneProxy* UMpTriangleSetComponent::CreateSceneProxy()
 
 int32 UMpTriangleSetComponent::GetNumMaterials() const
 {
-	return TrianglesByMaterial.GetMaxIndex();
+	if (!TriangleSet)
+	{
+		return Super::GetNumMaterials();
+	}
+	return TriangleSet->TrianglesByMaterial.GetMaxIndex();
 }
 
 FBoxSphereBounds UMpTriangleSetComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
+	if (!TriangleSet)
+	{
+		return Super::CalcBounds(LocalToWorld);
+	}
+
 	if (bBoundsDirty)
 	{
 		FBox Box(ForceInit);
 
-		for (const TSparseArray<FMpRenderableTriangle>& TriangleArray : TrianglesByMaterial)
+		for (const TSparseArray<FMpRenderableTriangle>& TriangleArray : TriangleSet->TrianglesByMaterial)
 		{
 			for (const FMpRenderableTriangle& Triangle : TriangleArray)
 			{

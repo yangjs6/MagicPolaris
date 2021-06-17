@@ -7,7 +7,7 @@
 #include "MpBillboardGraphics.generated.h"
 
 UCLASS()
-class UMpBillboardGraphics : public UMpGraphicsBase
+class UMpBillboardGraphics : public UMpGraphics
 {
 	GENERATED_BODY()
 public:

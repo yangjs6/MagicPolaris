@@ -39,6 +39,8 @@ public class MpBase : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+
+				"GDAL"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

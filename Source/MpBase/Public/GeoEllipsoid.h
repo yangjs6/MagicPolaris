@@ -25,6 +25,9 @@ public:
      */
     static /*constexpr*/ const FGeoEllipsoid WGS84;
 
+	FGeoEllipsoid() noexcept
+		: FGeoEllipsoid(FGeoEllipsoid::WGS84) {}
+
     /**
      * @brief Creates a new instance.
      *
@@ -32,7 +35,7 @@ public:
      * @param y The radius in y-direction.
      * @param z The radius in z-direction.
      */
-    constexpr FGeoEllipsoid(double x, double y, double z) noexcept
+    FGeoEllipsoid(double x, double y, double z) noexcept
         : FGeoEllipsoid(FVector3d(x, y, z)) {}
 
     /**
@@ -40,16 +43,26 @@ public:
      *
      * @param radii The radii in x-, y-, and z-direction.
      */
-    constexpr FGeoEllipsoid(const FVector3d& radii) noexcept
-        : _radii(radii),
-        _radiiSquared(radii * radii),
-        _oneOverRadii( FVector3d::One() / radii),
-        _oneOverRadiiSquared(FVector3d::One() / _radiiSquared) {}
+    FGeoEllipsoid(const FVector3d& radii) noexcept
+    {
+        SetRadii(radii);
+    }
 
     /**
      * @brief Returns the radii in x-, y-, and z-direction.
      */
     constexpr const FVector3d& GetRadii() const noexcept { return this->_radii; }
+
+    /**
+     * @brief Set the radii in x-, y-, and z-direction.
+     */
+    void SetRadii(const FVector3d& radii)
+    {
+		_radii = (radii);
+		_radiiSquared = radii * radii;
+		_oneOverRadii = FVector3d::One() / radii;
+		_oneOverRadiiSquared = FVector3d::One() / _radiiSquared;
+    }
 
     /**
      * @brief Computes the normal of the plane tangent to the surface of the

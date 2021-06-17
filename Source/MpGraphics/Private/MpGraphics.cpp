@@ -1,92 +1,84 @@
 #include "MpGraphics.h"
-#include "MpCoreAPI.h"
 
-UMpGraphicsBase::UMpGraphicsBase()
+UMpGraphics::UMpGraphics()
 	: bPositionDirty(true)
 	, bGeometryDirty(true)
 	, bMaterialDirty(true)
-	, Schema(nullptr)
-	, VertexSource(nullptr)
 {
-	DefaultVertexSource = FMpCoreAPI::CreateVertexSource();
 }
 
-UMpGraphicsBase::~UMpGraphicsBase()
+UMpGraphics::~UMpGraphics()
 {
 
 }
 
-void UMpGraphicsBase::SetVertexSource(IMpVertexSource* pVertexSource)
-{
-	VertexSource = pVertexSource;
-}
 
-IMpVertexSource* UMpGraphicsBase::GetVertexSource() const
-{
-	if (VertexSource)
-	{
-		return VertexSource;
-	}
-	return DefaultVertexSource.Get();
-}
-
-void UMpGraphicsBase::RebuildGraphics()
+void UMpGraphics::RebuildGraphics()
 {
 
 }
 
-void UMpGraphicsBase::UpdateGraphics(IMpSceneView* pView, float DeltaTime)
+void UMpGraphics::UpdateGraphics(IMpSceneView* pView, IMpGraphicsDrawContext* DrawContext, float DeltaTime)
 {
-	if (BeginUpdateGraphics(pView, DeltaTime))
+	if (BeginUpdateGraphics(pView, DrawContext, DeltaTime))
 	{
 		if (bPositionDirty)
 		{
-			UpdatePosition(pView, DeltaTime);
+			UpdatePosition(pView, DrawContext, DeltaTime);
 			bPositionDirty = false;
 		}
 		if (bGeometryDirty)
 		{
-			UpdateGeometry(pView, DeltaTime);
+			UpdateGeometry(pView, DrawContext, DeltaTime);
 			bGeometryDirty = false;
 		}
 		if (bMaterialDirty)
 		{
-			UpdateMaterial(pView, DeltaTime);
+			UpdateMaterial(pView, DrawContext, DeltaTime);
 			bMaterialDirty = false;
 		}
 	}
 
-	EndUpdateGraphics(pView, DeltaTime);
+	EndUpdateGraphics(pView, DrawContext, DeltaTime);
 }
 
-bool UMpGraphicsBase::GetPropertyValue(const FName& PropertyName, FString& PropertyValue) const
+bool UMpGraphics::GetPropertyValue(const FName& PropertyName, FString& PropertyValue) const
 {
 	return false;
 }
 
-bool UMpGraphicsBase::SetPropertyValue(const FName& PropertyName, const FString& PropertyValue)
+bool UMpGraphics::SetPropertyValue(const FName& PropertyName, const FString& PropertyValue)
 {
 	return false;
 }
 
-void UMpGraphicsBase::MarkGraphicsDirty()
+const FGeoBoundingBox& UMpGraphics::GetBoundingBox()
+{
+	if (bPositionDirty)
+	{
+		UpdateBoundingBox();
+	}
+	return BoundingBox;
+}
+
+void UMpGraphics::MarkGraphicsDirty()
 {
 	bPositionDirty = true;
 	bGeometryDirty = true;
 	bMaterialDirty = true;
 }
 
-void UMpGraphicsBase::MarkPositionDirty()
+void UMpGraphics::MarkPositionDirty()
 {
 	bPositionDirty = true;
 }
 
-void UMpGraphicsBase::MarkGeometryDirty()
+void UMpGraphics::MarkGeometryDirty()
 {
 	bGeometryDirty = true;
 }
 
-void UMpGraphicsBase::MarkMaterialDirty()
+void UMpGraphics::MarkMaterialDirty()
 {
 	bMaterialDirty = true;
 }

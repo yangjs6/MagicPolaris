@@ -1,140 +1,113 @@
 #include "MpGraphicsViewModel.h"
 #include "MpTypes.h"
-#include "MpCoreAPI.h"
 #include "MpGraphics.h"
-#include "IMpVertexSource.h"
-#include "IMpSceneView.h"
 #include "Async/ParallelFor.h"
 
-FMpGraphicsViewModel GGraphicsViewModel;
 
-FString FMpGraphicsViewModel::DefaultSceneName = "DefaultScene";
-FString FMpGraphicsViewModel::DefaultLayerName = "DefaultLayer";
-FString FMpGraphicsViewModel::DefaultNodeName = "DefaultNode";
-
-FMpGraphicsViewModel* FMpGraphicsViewModel::Get()
+UMpGraphicsViewModel::UMpGraphicsViewModel()
 {
-	return &GGraphicsViewModel;
 }
 
-FMpGraphicsViewModel::FMpGraphicsViewModel()
-{
-	SceneManager = FMpCoreAPI::CreateSceneManager();
-}
-
-FMpGraphicsViewModel::~FMpGraphicsViewModel()
+UMpGraphicsViewModel::~UMpGraphicsViewModel()
 {
 
 }
 
-void FMpGraphicsViewModel::AddReferencedObjects(FReferenceCollector& Collector)
+void UMpGraphicsViewModel::ClearGraphics()
 {
-	Collector.AddReferencedObjects(AddedGraphics);
+	AllGraphics.Empty();
+	GraphicsToUpdate.Empty();
+	GraphicsToRetrieve.Empty();
 }
 
-void FMpGraphicsViewModel::AddGraphics(UMpGraphicsBase* Graphics, const FString& NodeName, const FString& LayerName, const FString& SceneName)
+void UMpGraphicsViewModel::AddGraphics(UMpGraphics* Graphics)
 {
-	if (!Graphics)
+	if (Graphics)
 	{
-		return;
-	}
-
-	IMpScene* pScene = FMpSceneUtils::GetOrCreateScene(GetSceneManager(), SceneName);
-	IMpLayer* pLayer = FMpSceneUtils::GetOrCreateLayer(GetSceneManager(), pScene, LayerName);
-	IMpNode* pNode = FMpSceneUtils::CreateNode(Graphics, GetSceneManager(), pLayer, NodeName);
-
-	if (pNode)
-	{
-		AddedGraphics.Add(Graphics);
+		AllGraphics.Add(Graphics);
 	}
 }
 
-void FMpGraphicsViewModel::OnUpdateSyn(IMpSceneView* SceneView, float DeltaTime)
+void UMpGraphicsViewModel::OnUpdateSyn(IMpSceneView* SceneView, float DeltaTime)
 {
-	IMpViewCamera* pViewCamera = SceneView->GetCamera();
+	GraphicsToUpdate.Empty();
+	GraphicsToRetrieve.Empty();
 
-	int nScene = SceneManager->GetObjectCount();
-	for (int s = 0; s < nScene; s++)
+	TScriptInterface<IMpViewCamera> pViewCamera = SceneView->GetCamera();
+
+	int NumGraphics = AllGraphics.Num();
+	for (int i = 0; i < NumGraphics; i++)
 	{
-		IMpScene* pScene = SceneManager->GetObjectByIdx(s);
-		if (!pScene->GetVisiable())
+		UMpGraphics* pGraphics = AllGraphics[i];
+		if (!pGraphics)
 		{
 			continue;
 		}
-		int nLayer = pScene->GetObjectCount();
-		//for (int i=0;i<nLayer;i++)
-		for (int i = nLayer - 1; i >= 0; i--)
+
+		bool bGraphicsVisiable = pGraphics->Show;
+
+		if (pViewCamera && pViewCamera->Intersets(pGraphics->GetBoundingBox()) < 0)
 		{
-			IMpLayer* pLayer = pScene->GetObjectByIdx(i);
-			if (!pLayer->GetVisiable())
-			{
-				continue;
-			}
-			int nNode = pLayer->GetObjectCount();
-			//for (int j=0;j<nNode;j++)
-			for (int j = nNode - 1; j >= 0; j--)
-			{
-				IMpNode* pNode = pLayer->GetObjectByIdx(j);
+			bGraphicsVisiable = false;
+		}
 
-				if (!pNode->GetVisiable())
-				{
-					continue;
-				}
-
-				UMpGraphicsBase* pGraphics = (UMpGraphicsBase*)pNode->GetGraphics();
-				if (!pGraphics)
-				{
-					continue;
-				}
-				IMpVertexSource* pVertexSource = pGraphics->GetVertexSource();
-				if (pVertexSource && pViewCamera &&
-					pViewCamera->Intersets(pVertexSource->GetBoundingBox()) < 0)
-				{
-					continue;
-				}
-
-
-				GraphicsToUpdate.Add(pGraphics);
-
-			}
+		if (bGraphicsVisiable)
+		{
+			pGraphics->RegisterToDrawContext(SceneView, DrawContext);
+			GraphicsToUpdate.Add(pGraphics);
+		}
+		else
+		{
+			pGraphics->UnRegisterFromDrawContext(SceneView, DrawContext);
+			GraphicsToRetrieve.Add(pGraphics);
 		}
 	}
 }
 
-void FMpGraphicsViewModel::OnUpdateAsyn(IMpSceneView* SceneView, float DeltaTime)
+void UMpGraphicsViewModel::OnUpdateAsyn(IMpSceneView* SceneView, float DeltaTime)
 {
 	ParallelFor(GraphicsToUpdate.Num(), [&](int i)
 	{
-		UMpGraphicsBase* pGraphics = GraphicsToUpdate[i];
-		pGraphics->UpdateGraphics(SceneView, DeltaTime);
-	});
+		UMpGraphics* pGraphics = GraphicsToUpdate[i];
+		pGraphics->UpdateGraphics(SceneView, DrawContext, DeltaTime);
+	}, !bUseUpdateAsyn);
 }
 
-bool FMpGraphicsViewModel::OnPreDraw(IMpSceneView* SceneView)
+void UMpGraphicsViewModel::OnRetrieveSyn(IMpSceneView* SceneView, float DeltaTime)
 {
-	for (int i = 0; i < GraphicsToUpdate.Num(); i++)
+}
+
+void UMpGraphicsViewModel::OnRetrieveAsyn(IMpSceneView* SceneView, float DeltaTime)
+{
+
+}
+
+bool AMpGraphicsViewModelActor::RegisterDrawComponent(USceneComponent* Component)
+{
+	if (!Component->IsRegistered())
 	{
-		UMpGraphicsBase* pGraphics = GraphicsToUpdate[i];
-		pGraphics->PreDrawGraphics(SceneView, DrawContext);
+		Component->SetupAttachment(GetRootComponent());
+		Component->RegisterComponentWithWorld(GetWorld());
+		return true;
 	}
-	return true;
+	return false;
 }
 
-void FMpGraphicsViewModel::OnPostDraw(IMpSceneView* SceneView)
+bool AMpGraphicsViewModelActor::UnRegisterDrawComponent(USceneComponent* Component)
 {
-	for (int i = 0; i < GraphicsToUpdate.Num(); i++)
+	if (Component->IsRegistered())
 	{
-		UMpGraphicsBase* pGraphics = GraphicsToUpdate[i];
-		pGraphics->PostDrawGraphics(SceneView, DrawContext);
+		return true;
+		Component->UnregisterComponent();
 	}
+	return false;
 }
 
-void FMpGraphicsViewModel::OnRetrieveSyn(IMpSceneView* SceneView, float DeltaTime)
+AMpGraphicsViewModelActor::AMpGraphicsViewModelActor()
 {
-	GraphicsToUpdate.Empty();
+	ViewModel = CreateDefaultSubobject<UMpGraphicsViewModel>("ViewModel");
+	RootComponent = CreateDefaultSubobject<USceneComponent>("RootComponent");
+
+	ViewModel->InitDrawContext(this);
 }
 
-void FMpGraphicsViewModel::OnRetrieveAsyn(IMpSceneView* SceneView, float DeltaTime)
-{
-
-}

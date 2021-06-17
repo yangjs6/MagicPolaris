@@ -47,7 +47,8 @@ public class MpGraphics : ModuleRules
                 "RenderCore",
                 "RHI",
 				// ... add private dependencies that you statically link with here ...	
-			}
+                "GDAL"
+            }
 			);
 		
 		

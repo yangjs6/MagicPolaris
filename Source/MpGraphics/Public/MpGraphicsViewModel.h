@@ -1,33 +1,38 @@
 #pragma once
 
-#include "IMpViewModel.h"
+#include "MpViewModelActor.h"
+#include "Interfaces/IMpGraphics.h"
+#include "Interfaces/IMpViewModel.h"
+#include "MpGraphicsViewModel.generated.h"
 
-class UMpGraphicsBase;
+class UMpGraphics;
 
-class IMpGraphics;
-class IMpSchemaManager;
-class IMpSceneManager;
-class IMpGraphicsFactory;
-class IMpVertexSourceFactory;
-class IMpGraphicsDrawContext;
 
-class MPGRAPHICS_API FMpGraphicsViewModel : public IMpViewModel, FGCObject
+UCLASS()
+class MPGRAPHICS_API UMpGraphicsViewModel : 
+	public UObject,
+	public IMpViewModel
 {
+	GENERATED_BODY()
 public:
-	static FMpGraphicsViewModel* Get();
-	static FString DefaultSceneName;
-	static FString DefaultLayerName;
-	static FString DefaultNodeName;
 
-	FMpGraphicsViewModel();
-	~FMpGraphicsViewModel();
+	UMpGraphicsViewModel();
+	~UMpGraphicsViewModel();
 
-	virtual void AddReferencedObjects(FReferenceCollector& Collector);
+	UPROPERTY(Category = "ViewModel", EditAnywhere)
+		bool bEnable = true;
 
+	UPROPERTY(Category = "ViewModel", EditAnywhere)
+		bool bUseUpdateAsyn = false;
 
-	IMpSceneManager* GetSceneManager() { return SceneManager.Get(); }
+	//! 返回是否启用
+	virtual bool IsEnable(IMpSceneView* SceneView) { return bEnable; }
 
-	void AddGraphics(UMpGraphicsBase* Graphics, const FString& NodeName = DefaultNodeName, const FString& LayerName = DefaultLayerName, const FString& SceneName = DefaultSceneName);
+	void InitDrawContext(IMpGraphicsDrawContext* InDrawContext) { DrawContext = InDrawContext; }
+
+	void ClearGraphics();
+
+	void AddGraphics(UMpGraphics* Graphics);
 
 public:
 	//!view更新 (同步)
@@ -39,20 +44,62 @@ public:
 	//!view回收 (异步)
 	virtual void OnRetrieveAsyn(IMpSceneView* SceneView, float DeltaTime);
 
-	//!准备绘制，返回false表示不支持该视图绘制
-	virtual bool OnPreDraw(IMpSceneView* SceneView);
-	//!结束绘制
-	virtual void OnPostDraw(IMpSceneView* SceneView);
-
 protected:
-	IMpSchemaManager* SchemaManager;
-	TSharedPtr<IMpSceneManager> SceneManager;
+
 	IMpGraphicsDrawContext* DrawContext;
 
-	IMpGraphicsFactory* GraphicsFactory;
-	IMpVertexSourceFactory* VertexSourceFactory;
+	UPROPERTY()
+	TArray<UMpGraphics*> AllGraphics;
 
-	TArray<UMpGraphicsBase*> GraphicsToUpdate;
-
-	TArray<UMpGraphicsBase*> AddedGraphics;
+	TArray<UMpGraphics*> GraphicsToUpdate;
+	TArray<UMpGraphics*> GraphicsToRetrieve;
 };
+
+
+UCLASS()
+class MPGRAPHICS_API UMpGraphicsStyleBase :
+	public UObject
+	, public IMpGraphicsStyle
+{
+	GENERATED_BODY()
+public:
+	virtual UMaterialInterface* GetMaterialByName(const FName& InMaterial) { return nullptr; }
+
+	virtual UMaterialInterface* GetMaterialById(const int& InMaterialId) { return MaterialById.FindRef(InMaterialId); }
+
+	UPROPERTY(Category = "Graphics | Material", EditAnywhere)
+	TMap<int, UMaterialInterface*> MaterialById;
+};
+
+UCLASS(Abstract)
+class MPGRAPHICS_API AMpGraphicsViewModelActor :
+	public AMpViewModelActor,
+	public IMpGraphicsDrawContext
+{
+	GENERATED_BODY()
+public:
+	AMpGraphicsViewModelActor();
+
+	virtual IMpViewModel* GetViewModel() { return ViewModel; }
+
+	virtual bool RegisterDrawComponent(USceneComponent* Component);
+	virtual bool UnRegisterDrawComponent(USceneComponent* Component);
+
+
+	virtual UMaterialInterface* GetDefaultMaterial() { return DefaultMaterial ? DefaultMaterial : UMaterial::GetDefaultMaterial(MD_Surface); }
+
+	virtual IMpGraphicsStyle* GetStyle(const FName& InName) { return GraphicsStyleMap.FindRef(InName); }
+
+
+	UPROPERTY(Category = "Graphics | Material", EditAnywhere)
+		UMaterialInterface* DefaultMaterial;
+
+	UPROPERTY(Category = "Graphics | Material", EditAnywhere)
+		TMap<FName, UMpGraphicsStyleBase*> GraphicsStyleMap;
+
+protected:
+
+	UPROPERTY(Category = "ViewModel", EditAnywhere)
+		UMpGraphicsViewModel* ViewModel;
+};
+
